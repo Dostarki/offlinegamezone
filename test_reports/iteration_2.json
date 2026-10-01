@@ -1,0 +1,67 @@
+{
+  "summary": "Retested admin origin/auth + settings restore, local session/report durability, Early route behavior, and selective gameplay/unit coverage on public preview.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "unit: backend/tests/test_iteration6_game_unit_focus.py",
+        "issue": "6/17 deterministic gameplay unit tests fail (heavy damage, respawn inventory reset, spawn safety spread/cadence, bot combat assertions) and no longer match current runtime behavior."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Early admin/config data",
+        "issue": "Early APIs return 503 due external DB2 network block; UI shows load-error state instead of interactive login/settings.",
+        "affected_selectors": [
+          "[data-testid='admin-load-error']",
+          "/api/early/config",
+          "/api/early/admin/settings"
+        ]
+      },
+      {
+        "flow": "Real /play useSession + GameRenderer gameplay evidence",
+        "issue": "Could not run full authenticated browser gameplay (movement/fire/reload/death/respawn) because production wallet sign-in gate remained locked in automation context (no connected wallet fixture in browser).",
+        "affected_selectors": [
+          "[data-testid='wallet-lock-notice']",
+          "[data-testid='join-game-button']"
+        ]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration14_admin_origin_and_independence.py",
+    "/app/backend/tests/test_iteration_local_offline_focus.py",
+    "/app/backend/tests/test_iteration2_regression_focus.py",
+    "/app/backend/tests/test_iteration6_game_unit_focus.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/local-runtime-build.log"
+  ],
+  "action_items": [
+    "Review/fix or retire stale expectations in backend/tests/test_iteration6_game_unit_focus.py to align with current gameplay/runtime contracts.",
+    "Provide a deterministic browser-test auth fixture/provider path to exercise true /play UI flow (useSession + GameRenderer) without bypassing production auth logic.",
+    "Infrastructure: allow TCP access to MONGO_URL2/DB_NAME2 for Early DB to clear intentional 503 isolation when needed."
+  ],
+  "critical_code_review_comments": [
+    "admin_auth.check_origin currently compares raw request Origin without request-side normalization; trailing-slash request Origin behavior is brittle and should be explicitly normalized or explicitly rejected with documented contract.",
+    "Early subsystem correctly isolates failure (503) when secondary DB is unreachable; game API path remains operational.",
+    "Frontend production build succeeds but has heavy warning surface (missing RN async-storage resolution + many sourcemap warnings), increasing noise for real regressions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration14_admin_origin_and_independence.py",
+    "/app/backend/tests/test_iteration2_regression_focus.py",
+    "/app/test_reports/iteration_2.json"
+  ],
+  "success_rate": {
+    "backend": "86%",
+    "frontend": "80%"
+  },
+  "seed_data_creation": "Created test-only paid wallet/session fixture account in test_iteration2_regression_focus.py; cleaned up collections in fixture teardown.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Confirmed: public admin login/settings works (Origin allowlist fixed), browser admin can set zombie_count=100 + bot_count=3 and restore original settings. Local report idempotency across disconnect/recover passed (no duplicate gold delta on replay of same sequence). Early /early and /early/console routes render; /api/early/* and /api/early/admin/settings return 503 due external DB2 block. Full /play browser gameplay was not executed because wallet-auth remained locked in automation browser.",
+  "rca of the issue": "Remaining integration blocker is environmental: Early DB (MONGO_URL2) is externally unreachable (TCP27017 blocked), so Early API routes return 503 by design. Separate quality gap: iteration6 unit tests are out-of-sync with present engine/runtime behavior, producing false-negative regression signals until updated to current contracts."
+}
